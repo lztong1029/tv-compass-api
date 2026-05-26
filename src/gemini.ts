@@ -91,8 +91,12 @@ export function createGeminiGenerator(apiKey: string | undefined, model = "gemin
         ],
         generationConfig: {
           temperature: 0.2,
-          responseMimeType: "application/json",
-          responseJsonSchema: structuredResponseSchema
+          responseFormat: {
+            text: {
+              mimeType: "application/json",
+              schema: structuredResponseSchema
+            }
+          }
         }
       })
     });
@@ -146,8 +150,12 @@ export function createGeminiVisionGenerator(apiKey: string | undefined, model = 
         ],
         generationConfig: {
           temperature: 0.1,
-          responseMimeType: "application/json",
-          responseJsonSchema: visionResponseSchema
+          responseFormat: {
+            text: {
+              mimeType: "application/json",
+              schema: visionResponseSchema
+            }
+          }
         }
       })
     });

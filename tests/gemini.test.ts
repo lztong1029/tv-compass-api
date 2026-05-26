@@ -45,8 +45,8 @@ describe("gemini generator", () => {
     expect((options?.headers as Record<string, string>)["x-goog-api-key"]).toBe("test-key");
 
     const body = JSON.parse(String(options?.body));
-    expect(body.generationConfig.responseMimeType).toBe("application/json");
-    expect(body.generationConfig.responseJsonSchema.properties.intent.enum).toContain("open_app");
+    expect(body.generationConfig.responseFormat.text.mimeType).toBe("application/json");
+    expect(body.generationConfig.responseFormat.text.schema.properties.intent.enum).toContain("open_app");
   });
 
   it("sends camera frames to Gemini vision as inline JPEG data", async () => {
@@ -104,7 +104,7 @@ describe("gemini generator", () => {
     expect(body.contents[0].parts[0].text).toContain("If the needed button is not visible");
     expect(body.contents[0].parts[1].inlineData.mimeType).toBe("image/jpeg");
     expect(body.contents[0].parts[1].inlineData.data).toBe("abc123");
-    expect(body.generationConfig.responseJsonSchema.properties.action.enum).toContain("press_button");
-    expect(body.generationConfig.responseJsonSchema.properties.currentState.type).toContain("string");
+    expect(body.generationConfig.responseFormat.text.schema.properties.action.enum).toContain("press_button");
+    expect(body.generationConfig.responseFormat.text.schema.properties.currentState.type).toContain("string");
   });
 });
