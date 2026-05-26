@@ -37,10 +37,13 @@ export function createGeminiGenerator(apiKey: string | undefined, model = "gemin
 
   return async (input, memory) => {
     const prompt = buildPrompt(input, memory);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
       body: JSON.stringify({
         contents: [
           {
@@ -50,8 +53,12 @@ export function createGeminiGenerator(apiKey: string | undefined, model = "gemin
         ],
         generationConfig: {
           temperature: 0.2,
-          responseMimeType: "application/json",
-          responseSchema: structuredResponseSchema
+          responseFormat: {
+            text: {
+              mimeType: "application/json",
+              schema: structuredResponseSchema
+            }
+          }
         }
       })
     });

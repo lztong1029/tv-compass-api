@@ -24,8 +24,8 @@ export async function parseAssistantRequest(
       if (parsed) {
         return { ...parsed, source: "gemini" };
       }
-    } catch {
-      // Fall through to local rules so classroom demos are not blocked by network or model failures.
+    } catch (error) {
+      console.warn(`Gemini parse failed; using local fallback. ${errorMessage(error)}`);
     }
   }
 
@@ -91,4 +91,8 @@ function normalizeMemoryUpdates(value: unknown): { key: string; value: string }[
       return { key: entry.key.trim(), value: entry.value.trim() };
     })
     .filter((item): item is { key: string; value: string } => Boolean(item?.key && item?.value));
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
