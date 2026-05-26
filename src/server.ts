@@ -11,7 +11,13 @@ export function createApp(repository: MemoryRepository, gemini: GeminiGenerator 
   app.use(express.json({ limit: "256kb" }));
 
   app.get("/health", (_request, response) => {
-    response.json({ ok: true, service: "tv-compass-api" });
+    response.json({
+      ok: true,
+      service: "tv-compass-api",
+      version: "2026-05-26.2",
+      geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+      geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.5-flash"
+    });
   });
 
   app.post("/v1/assistant/parse", async (request, response, next) => {
