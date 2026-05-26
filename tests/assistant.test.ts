@@ -31,6 +31,21 @@ describe("assistant parser", () => {
     expect(result.targetChannel).toBe("Live TV");
   });
 
+  it("understands non-demo streaming apps through local fallback", async () => {
+    const result = await parseAssistantRequest(
+      {
+        userId: "demo",
+        utterance: "I want to see HBO"
+      },
+      defaultMemory(),
+      null
+    );
+
+    expect(result.source).toBe("fallback");
+    expect(result.intent).toBe("open_app");
+    expect(result.targetApp).toBe("HBO");
+  });
+
   it("rejects malformed gemini output", () => {
     const result = validateAssistantResponse({
       intent: "open_app",

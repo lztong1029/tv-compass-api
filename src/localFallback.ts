@@ -7,7 +7,7 @@ const baseResponse = (): AssistantParseResponse => ({
   searchQuery: null,
   inputName: null,
   confidence: 0,
-  clarificationQuestion: "I can help with turning on the TV, opening Netflix or YouTube, and finding a saved news channel.",
+  clarificationQuestion: "Tell me what you want to watch, or name the app, channel, input, or program.",
   memoryUpdates: [],
   source: "fallback"
 });
@@ -48,6 +48,18 @@ export function parseWithLocalFallback(utterance: string, memory: MemorySnapshot
       confidence: 0.9,
       clarificationQuestion: null,
       memoryUpdates: [{ key: "lastTargetApp", value: "YouTube" }]
+    };
+  }
+
+  const appName = knownStreamingApp(text) ?? genericWatchTarget(text);
+  if (appName) {
+    return {
+      ...response,
+      intent: "open_app",
+      targetApp: appName,
+      confidence: 0.74,
+      clarificationQuestion: null,
+      memoryUpdates: [{ key: "lastTargetApp", value: appName }]
     };
   }
 
@@ -125,4 +137,59 @@ export function parseWithLocalFallback(utterance: string, memory: MemorySnapshot
   }
 
   return response;
+}
+
+function knownStreamingApp(text: string): string | null {
+  const aliases: Array<[string, string]> = [
+    ["hbo max", "Max"],
+    ["hbo", "HBO"],
+    ["max", "Max"],
+    ["disney plus", "Disney+"],
+    ["disney+", "Disney+"],
+    ["disney", "Disney+"],
+    ["hulu", "Hulu"],
+    ["prime video", "Prime Video"],
+    ["amazon prime", "Prime Video"],
+    ["peacock", "Peacock"],
+    ["paramount", "Paramount+"],
+    ["apple tv", "Apple TV"],
+    ["espn", "ESPN"],
+    ["roku channel", "Roku Channel"],
+    ["tubi", "Tubi"],
+    ["pluto", "Pluto TV"]
+  ];
+
+  return aliases.find(([needle]) => text.includes(needle))?.[1] ?? null;
+}
+
+function genericWatchTarget(text: string): string | null {
+  const prefixes = [
+    "i want to watch",
+    "i want to see",
+    "i want to open",
+    "watch",
+    "open",
+    "launch",
+    "start",
+    "打开",
+    "看"
+  ];
+
+  for (const prefix of prefixes) {
+    if (!text.startsWith(prefix)) continue;
+    const candidate = text.slice(prefix.length).trim();
+    if (candidate.length >= 2 && !candidate.includes("tv")) {
+      return titleCase(candidate);
+    }
+  }
+
+  return null;
+}
+
+function titleCase(value: string): string {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => (/^[a-z]{2,4}$/.test(word) ? word.toUpperCase() : word.slice(0, 1).toUpperCase() + word.slice(1)))
+    .join(" ");
 }
