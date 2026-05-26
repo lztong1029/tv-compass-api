@@ -40,8 +40,56 @@ export type AssistantParseResponse = {
   source: "gemini" | "fallback";
 };
 
+export type GoalDescriptor = {
+  intent: AssistantIntent;
+  title: string;
+  targetApp: string | null;
+  targetChannel: string | null;
+  searchQuery: string | null;
+  inputName: string | null;
+};
+
+export type VisionSceneType = "remote" | "tv" | "unknown";
+
+export type VisionGuideAction =
+  | "point_camera"
+  | "press_button"
+  | "move_selection"
+  | "wait"
+  | "ask_clarification"
+  | "done";
+
+export type VisionTargetRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type VisionNextStepInput = {
+  userId: string;
+  goal: GoalDescriptor;
+  recognizedTexts?: string[];
+  imageBase64?: string | null;
+  recentMemory?: MemorySnapshot;
+};
+
+export type VisionNextStepResponse = {
+  sceneType: VisionSceneType;
+  action: VisionGuideAction;
+  instructionText: string;
+  spokenText: string;
+  targetLabel: string | null;
+  targetButtonKind: string | null;
+  targetRect: VisionTargetRect | null;
+  confidence: number;
+  needsAnotherFrame: boolean;
+  reason: string | null;
+  source: "gemini" | "fallback";
+};
+
 export const defaultMemory = (): MemorySnapshot => ({
-  preferredLanguage: "zh-CN",
+  preferredLanguage: "en-US",
   favoriteApps: [],
   favoriteChannels: [],
   lastTargetApp: null,

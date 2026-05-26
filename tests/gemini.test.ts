@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createGeminiGenerator } from "../src/gemini.js";
+import { createGeminiGenerator, createGeminiVisionGenerator } from "../src/gemini.js";
 import { defaultMemory } from "../src/types.js";
 
 describe("gemini generator", () => {
@@ -47,5 +47,62 @@ describe("gemini generator", () => {
     const body = JSON.parse(String(options?.body));
     expect(body.generationConfig.responseMimeType).toBe("application/json");
     expect(body.generationConfig.responseJsonSchema.properties.intent.enum).toContain("open_app");
+  });
+
+  it("sends camera frames to Gemini vision as inline JPEG data", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      sceneType: "remote",
+                      action: "press_button",
+                      instructionText: "Press Power.",
+                      spokenText: "Press the Power button.",
+                      targetLabel: "Power",
+                      targetButtonKind: "power",
+                      targetRect: { x: 0.2, y: 0.1, width: 0.1, height: 0.08 },
+                      confidence: 0.82,
+                      needsAnotherFrame: true,
+                      reason: "Power button is visible."
+                    })
+                  }
+                ]
+              }
+            }
+          ]
+        }),
+        { status: 200 }
+      )
+    );
+
+    const generator = createGeminiVisionGenerator("test-key", "gemini-2.5-flash");
+    await generator?.(
+      {
+        userId: "demo",
+        goal: {
+          intent: "turn_on_tv",
+          title: "Turn on TV",
+          targetApp: null,
+          targetChannel: null,
+          searchQuery: null,
+          inputName: null
+        },
+        imageBase64: "abc123"
+      },
+      defaultMemory()
+    );
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [, options] = fetchMock.mock.calls[0];
+    const body = JSON.parse(String(options?.body));
+    expect(body.contents[0].parts[0].text).toContain("A rough estimated targetRect is better than null");
+    expect(body.contents[0].parts[1].inlineData.mimeType).toBe("image/jpeg");
+    expect(body.contents[0].parts[1].inlineData.data).toBe("abc123");
+    expect(body.generationConfig.responseJsonSchema.properties.action.enum).toContain("press_button");
   });
 });
