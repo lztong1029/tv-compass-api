@@ -107,4 +107,45 @@ describe("gemini generator", () => {
     expect(body.generationConfig.responseFormat.text.schema.properties.action.enum).toContain("press_button");
     expect(body.generationConfig.responseFormat.text.schema.properties.currentState.type).toContain("string");
   });
+
+  it("falls back to JSON mode when structured output is rejected", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "bad schema" }), { status: 400 }))
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      text: JSON.stringify({
+                        intent: "search_program",
+                        targetApp: "HBO",
+                        targetChannel: null,
+                        searchQuery: "Euphoria",
+                        inputName: null,
+                        confidence: 0.83,
+                        clarificationQuestion: null,
+                        memoryUpdates: []
+                      })
+                    }
+                  ]
+                }
+              }
+            ]
+          }),
+          { status: 200 }
+        )
+      );
+
+    const generator = createGeminiGenerator("test-key", "gemini-2.5-flash");
+    const result = await generator?.({ userId: "demo", utterance: "watch Euphoria on HBO" }, defaultMemory());
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result?.intent).toBe("search_program");
+    const secondBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
+    expect(secondBody.generationConfig.responseMimeType).toBe("application/json");
+    expect(secondBody.generationConfig.responseFormat).toBeUndefined();
+  });
 });

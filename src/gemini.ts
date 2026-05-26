@@ -75,45 +75,12 @@ export function createGeminiGenerator(apiKey: string | undefined, model = "gemin
 
   return async (input, memory) => {
     const prompt = buildPrompt(input, memory);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2,
-          responseFormat: {
-            text: {
-              mimeType: "application/json",
-              schema: structuredResponseSchema
-            }
-          }
-        }
-      })
+    const parts = [{ text: prompt }];
+    return requestGeminiJSON<AssistantParseResponse>(apiKey, model, parts, {
+      temperature: 0.2,
+      schema: structuredResponseSchema,
+      errorPrefix: "Gemini request failed"
     });
-
-    if (!response.ok) {
-      throw new Error(`Gemini request failed: ${response.status}`);
-    }
-
-    const payload = (await response.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("\n").trim();
-    if (!text) {
-      throw new Error("Gemini returned no text");
-    }
-
-    return JSON.parse(text) as AssistantParseResponse;
   };
 }
 
@@ -134,46 +101,80 @@ export function createGeminiVisionGenerator(apiKey: string | undefined, model = 
       });
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts
-          }
-        ],
-        generationConfig: {
-          temperature: 0.1,
-          responseFormat: {
-            text: {
-              mimeType: "application/json",
-              schema: visionResponseSchema
-            }
-          }
-        }
-      })
+    return requestGeminiJSON<VisionNextStepResponse>(apiKey, model, parts, {
+      temperature: 0.1,
+      schema: visionResponseSchema,
+      errorPrefix: "Gemini vision request failed"
     });
-
-    if (!response.ok) {
-      throw new Error(`Gemini vision request failed: ${response.status}`);
-    }
-
-    const payload = (await response.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("\n").trim();
-    if (!text) {
-      throw new Error("Gemini vision returned no text");
-    }
-
-    return JSON.parse(text) as VisionNextStepResponse;
   };
+}
+
+async function requestGeminiJSON<T>(
+  apiKey: string,
+  model: string,
+  parts: Array<Record<string, unknown>>,
+  options: { temperature: number; schema: Record<string, unknown>; errorPrefix: string }
+): Promise<T> {
+  try {
+    return await postGeminiJSON<T>(apiKey, model, parts, {
+      temperature: options.temperature,
+      responseFormat: {
+        text: {
+          mimeType: "application/json",
+          schema: options.schema
+        }
+      }
+    }, options.errorPrefix);
+  } catch (structuredError) {
+    try {
+      return await postGeminiJSON<T>(apiKey, model, parts, {
+        temperature: options.temperature,
+        responseMimeType: "application/json"
+      }, options.errorPrefix);
+    } catch (looseError) {
+      throw new Error(`${options.errorPrefix}: structured=${errorMessage(structuredError)} loose=${errorMessage(looseError)}`);
+    }
+  }
+}
+
+async function postGeminiJSON<T>(
+  apiKey: string,
+  model: string,
+  parts: Array<Record<string, unknown>>,
+  generationConfig: Record<string, unknown>,
+  errorPrefix: string
+): Promise<T> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts
+        }
+      ],
+      generationConfig
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`${errorPrefix}: ${response.status}`);
+  }
+
+  const payload = (await response.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("\n").trim();
+  if (!text) {
+    throw new Error(`${errorPrefix}: no text`);
+  }
+
+  return JSON.parse(text) as T;
 }
 
 function buildPrompt(input: AssistantParseInput, memory: MemorySnapshot): string {
@@ -242,4 +243,8 @@ function buildVisionPrompt(input: VisionNextStepInput, memory: MemorySnapshot): 
     `Memory: ${JSON.stringify(memory)}`,
     input.imageBase64 ? "A current camera JPEG is attached." : "No camera image is attached."
   ].join("\n");
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
