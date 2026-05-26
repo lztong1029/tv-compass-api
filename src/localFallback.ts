@@ -51,6 +51,17 @@ export function parseWithLocalFallback(utterance: string, memory: MemorySnapshot
     };
   }
 
+  if (text.includes("live tv") || text.includes("live television") || text.includes("antenna") || text.includes("cable tv") || text.includes("电视直播")) {
+    return {
+      ...response,
+      intent: "open_channel",
+      targetChannel: "Live TV",
+      confidence: 0.82,
+      clarificationQuestion: null,
+      memoryUpdates: [{ key: "lastTargetChannel", value: "Live TV" }]
+    };
+  }
+
   if (text.includes("昨天") || text.includes("last") || text.includes("新闻台") || text.includes("news channel")) {
     const targetChannel = memory.lastTargetChannel ?? memory.favoriteChannels[0] ?? null;
     if (targetChannel) {

@@ -53,12 +53,8 @@ export function createGeminiGenerator(apiKey: string | undefined, model = "gemin
         ],
         generationConfig: {
           temperature: 0.2,
-          responseFormat: {
-            text: {
-              mimeType: "application/json",
-              schema: structuredResponseSchema
-            }
-          }
+          responseMimeType: "application/json",
+          responseJsonSchema: structuredResponseSchema
         }
       })
     });
@@ -88,7 +84,7 @@ function buildPrompt(input: AssistantParseInput, memory: MemorySnapshot): string
     "Supported intents:",
     "- turn_on_tv",
     "- open_app: targetApp should be Netflix, YouTube, or another app name.",
-    "- open_channel: targetChannel should be a channel or saved program name inferred from memory.",
+    "- open_channel: targetChannel should be a channel, Live TV, Antenna TV, or saved program name inferred from memory.",
     "- search_program: searchQuery should be a program, show, topic, or app if not directly supported.",
     "- change_input: inputName should be HDMI, HDMI 1, HDMI 2, etc.",
     "- unknown: use this if the request is unclear.",

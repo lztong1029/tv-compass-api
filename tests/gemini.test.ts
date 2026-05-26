@@ -7,7 +7,7 @@ describe("gemini generator", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses current Gemini structured output responseFormat", async () => {
+  it("uses Gemini REST structured output fields", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -45,7 +45,7 @@ describe("gemini generator", () => {
     expect((options?.headers as Record<string, string>)["x-goog-api-key"]).toBe("test-key");
 
     const body = JSON.parse(String(options?.body));
-    expect(body.generationConfig.responseFormat.text.mimeType).toBe("application/json");
-    expect(body.generationConfig.responseFormat.text.schema.properties.intent.enum).toContain("open_app");
+    expect(body.generationConfig.responseMimeType).toBe("application/json");
+    expect(body.generationConfig.responseJsonSchema.properties.intent.enum).toContain("open_app");
   });
 });
