@@ -46,6 +46,44 @@ describe("vision next step", () => {
     expect(result.needsAnotherFrame).toBe(true);
   });
 
+  it("guides out of a streaming app before live TV", () => {
+    const result = fallbackVisionStep({
+      userId: "demo",
+      goal: {
+        intent: "open_channel",
+        title: "Open Live TV",
+        targetApp: null,
+        targetChannel: "Live TV",
+        searchQuery: null,
+        inputName: null
+      },
+      recognizedTexts: ["HBO", "Euphoria", "Season 2", "Resume"]
+    });
+
+    expect(result.action).toBe("press_button");
+    expect(result.targetButtonKind).toBe("home");
+    expect(result.instructionText.toLowerCase()).toContain("streaming app");
+  });
+
+  it("keeps app and content separate for title requests", () => {
+    const result = fallbackVisionStep({
+      userId: "demo",
+      goal: {
+        intent: "search_program",
+        title: "Open Euphoria in HBO",
+        targetApp: "HBO",
+        targetChannel: null,
+        searchQuery: "Euphoria",
+        inputName: null
+      },
+      recognizedTexts: ["Google TV", "Apps", "Search"]
+    });
+
+    expect(result.sceneType).toBe("tv");
+    expect(result.action).toBe("move_selection");
+    expect(result.targetLabel).toBe("Search");
+  });
+
   it("validates Gemini target rectangles", () => {
     const result = validateVisionResponse({
       sceneType: "remote",

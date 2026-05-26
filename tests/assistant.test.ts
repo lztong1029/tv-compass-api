@@ -46,6 +46,22 @@ describe("assistant parser", () => {
     expect(result.targetApp).toBe("HBO");
   });
 
+  it("does not collapse content requests into app-only requests", async () => {
+    const result = await parseAssistantRequest(
+      {
+        userId: "demo",
+        utterance: "I want to watch Euphoria on HBO"
+      },
+      defaultMemory(),
+      null
+    );
+
+    expect(result.source).toBe("fallback");
+    expect(result.intent).toBe("search_program");
+    expect(result.targetApp).toBe("HBO");
+    expect(result.searchQuery).toBe("Euphoria");
+  });
+
   it("rejects malformed gemini output", () => {
     const result = validateAssistantResponse({
       intent: "open_app",

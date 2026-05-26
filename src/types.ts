@@ -79,6 +79,8 @@ export type VisionNextStepResponse = {
   action: VisionGuideAction;
   instructionText: string;
   spokenText: string;
+  currentState: string | null;
+  nextCheckpoint: string | null;
   targetLabel: string | null;
   targetButtonKind: string | null;
   targetRect: VisionTargetRect | null;

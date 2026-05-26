@@ -100,9 +100,11 @@ describe("gemini generator", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const [, options] = fetchMock.mock.calls[0];
     const body = JSON.parse(String(options?.body));
-    expect(body.contents[0].parts[0].text).toContain("A rough estimated targetRect is better than null");
+    expect(body.contents[0].parts[0].text).toContain("This is not a keyword finder");
+    expect(body.contents[0].parts[0].text).toContain("If the needed button is not visible");
     expect(body.contents[0].parts[1].inlineData.mimeType).toBe("image/jpeg");
     expect(body.contents[0].parts[1].inlineData.data).toBe("abc123");
     expect(body.generationConfig.responseJsonSchema.properties.action.enum).toContain("press_button");
+    expect(body.generationConfig.responseJsonSchema.properties.currentState.type).toContain("string");
   });
 });

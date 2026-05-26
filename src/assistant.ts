@@ -39,6 +39,10 @@ export function updatedMemoryAfterParse(memory: MemorySnapshot, response: Assist
     derivedUpdates.push({ key: "lastTargetApp", value: response.targetApp });
   }
 
+  if (response.intent === "search_program" && response.targetApp) {
+    derivedUpdates.push({ key: "lastTargetApp", value: response.targetApp });
+  }
+
   if (response.intent === "open_channel" && response.targetChannel) {
     derivedUpdates.push({ key: "lastTargetChannel", value: response.targetChannel });
   }

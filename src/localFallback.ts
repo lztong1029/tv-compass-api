@@ -51,7 +51,20 @@ export function parseWithLocalFallback(utterance: string, memory: MemorySnapshot
     };
   }
 
-  const appName = knownStreamingApp(text) ?? genericWatchTarget(text);
+  const contentRequest = contentRequestFromText(text);
+  if (contentRequest) {
+    return {
+      ...response,
+      intent: "search_program",
+      targetApp: contentRequest.appName,
+      searchQuery: contentRequest.title,
+      confidence: 0.76,
+      clarificationQuestion: null,
+      memoryUpdates: contentRequest.appName ? [{ key: "lastTargetApp", value: contentRequest.appName }] : []
+    };
+  }
+
+  const appName = knownStreamingApp(text);
   if (appName) {
     return {
       ...response,
@@ -136,10 +149,25 @@ export function parseWithLocalFallback(utterance: string, memory: MemorySnapshot
     }
   }
 
+  const genericTarget = genericWatchTarget(text);
+  if (genericTarget) {
+    return {
+      ...response,
+      intent: "search_program",
+      searchQuery: genericTarget,
+      confidence: 0.62,
+      clarificationQuestion: null
+    };
+  }
+
   return response;
 }
 
 function knownStreamingApp(text: string): string | null {
+  return streamingAppMatch(text)?.[1] ?? null;
+}
+
+function streamingAppMatch(text: string): [string, string] | null {
   const aliases: Array<[string, string]> = [
     ["hbo max", "Max"],
     ["hbo", "HBO"],
@@ -159,7 +187,38 @@ function knownStreamingApp(text: string): string | null {
     ["pluto", "Pluto TV"]
   ];
 
-  return aliases.find(([needle]) => text.includes(needle))?.[1] ?? null;
+  return aliases.find(([needle]) => text.includes(needle)) ?? null;
+}
+
+function contentRequestFromText(text: string): { appName: string | null; title: string } | null {
+  const requested = genericWatchTarget(text);
+  if (!requested) {
+    return null;
+  }
+
+  const requestedLower = requested.toLowerCase();
+  const appMatch = streamingAppMatch(requestedLower);
+  if (appMatch) {
+    const title = streamingAppContentTitle(requestedLower, appMatch);
+    if (title) {
+      return { appName: appMatch[1], title: titleCase(title) };
+    }
+
+    return null;
+  }
+
+  return { appName: null, title: titleCase(requested) };
+}
+
+function streamingAppContentTitle(text: string, appMatch: [string, string]): string | null {
+  const escaped = escapeRegExp(appMatch[0]);
+  const cleaned = text
+    .replace(new RegExp(`\\s+(on|in|inside|from|with)\\s+${escaped}\\b`, "gi"), " ")
+    .replace(new RegExp(`\\b${escaped}\\s*[:\\-]?\\s*`, "gi"), " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return cleaned.length >= 2 ? cleaned : null;
 }
 
 function genericWatchTarget(text: string): string | null {
@@ -192,4 +251,8 @@ function titleCase(value: string): string {
     .filter(Boolean)
     .map((word) => (/^[a-z]{2,4}$/.test(word) ? word.toUpperCase() : word.slice(0, 1).toUpperCase() + word.slice(1)))
     .join(" ");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

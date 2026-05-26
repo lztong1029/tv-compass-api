@@ -60,6 +60,8 @@ export function fallbackVisionStep(input: VisionNextStepInput): VisionNextStepRe
       action: "point_camera",
       instructionText: "Point the camera at the remote or the TV screen.",
       spokenText: "Point the camera at the remote or the TV screen, then tap Analyze View.",
+      currentState: "No usable camera frame or OCR text was available.",
+      nextCheckpoint: "remote or TV screen visible",
       targetLabel: null,
       targetButtonKind: null,
       confidence: 0.35,
@@ -74,6 +76,8 @@ export function fallbackVisionStep(input: VisionNextStepInput): VisionNextStepRe
       action: "press_button",
       instructionText: "Show the top of the remote and press Power.",
       spokenText: "Point the camera at the top of the remote. Press the Power button.",
+      currentState: "The goal is to power on the TV.",
+      nextCheckpoint: "TV screen turns on",
       targetLabel: "Power",
       targetButtonKind: "power",
       confidence: 0.56,
@@ -88,11 +92,61 @@ export function fallbackVisionStep(input: VisionNextStepInput): VisionNextStepRe
       action: "press_button",
       instructionText: `Press Input, then choose ${goal.inputName ?? "the correct input"} on the TV.`,
       spokenText: "Point the camera at the remote and press the Input button.",
+      currentState: "Input switching starts from the remote on most TVs.",
+      nextCheckpoint: "input/source menu visible",
       targetLabel: "Input",
       targetButtonKind: "input",
       confidence: 0.56,
       needsAnotherFrame: true,
       reason: "Input switching usually starts from the Input or Source button."
+    });
+  }
+
+  if (goal.intent === "open_channel" && isLiveTVGoal(goal) && looksLikeInsideStreamingApp(texts)) {
+    return response({
+      sceneType: "remote",
+      action: "press_button",
+      instructionText: "This looks like a streaming app. Show the remote and press Home to leave it.",
+      spokenText: "This looks like a streaming app. Show me the remote and press Home.",
+      currentState: "The TV appears to be inside a streaming app or show page.",
+      nextCheckpoint: "TV home screen or live TV area",
+      targetLabel: "Home",
+      targetButtonKind: "home",
+      confidence: 0.58,
+      needsAnotherFrame: true,
+      reason: "Live TV/news usually requires leaving the current app before selecting the live TV area."
+    });
+  }
+
+  if (goal.intent === "search_program" && goal.targetApp && looksLikeInsideDifferentApp(texts, goal.targetApp)) {
+    return response({
+      sceneType: "remote",
+      action: "press_button",
+      instructionText: `This is not ${goal.targetApp}. Show the remote and press Home first.`,
+      spokenText: `This does not look like ${goal.targetApp}. Show me the remote and press Home first.`,
+      currentState: "The TV appears to be inside a different app or content page.",
+      nextCheckpoint: `${goal.targetApp} app tile or search`,
+      targetLabel: "Home",
+      targetButtonKind: "home",
+      confidence: 0.56,
+      needsAnotherFrame: true,
+      reason: "The requested content belongs to a specific service, but the current screen does not look like that service."
+    });
+  }
+
+  if (goal.intent === "search_program" && goal.targetApp && texts.includes(goal.targetApp.toLowerCase()) && !texts.includes((goal.searchQuery ?? "").toLowerCase())) {
+    return response({
+      sceneType: "tv",
+      action: "move_selection",
+      instructionText: `You appear to be in ${goal.targetApp}. Find Search, then search for ${goal.searchQuery ?? displayTarget(goal)}.`,
+      spokenText: `You appear to be in ${goal.targetApp}. Find Search, then search for ${goal.searchQuery ?? displayTarget(goal)}.`,
+      currentState: `The TV appears to be in ${goal.targetApp}.`,
+      nextCheckpoint: "search field visible",
+      targetLabel: "Search",
+      targetButtonKind: "ok",
+      confidence: 0.55,
+      needsAnotherFrame: true,
+      reason: "The app is visible but the requested title is not visible yet."
     });
   }
 
@@ -102,6 +156,8 @@ export function fallbackVisionStep(input: VisionNextStepInput): VisionNextStepRe
       action: "move_selection",
       instructionText: `The TV screen shows ${displayTarget(goal)}. Move the highlight there and press OK.`,
       spokenText: `Move the TV highlight to ${displayTarget(goal)}, then press OK.`,
+      currentState: "The requested target appears in the visible TV text.",
+      nextCheckpoint: `${displayTarget(goal)} opens`,
       targetLabel: displayTarget(goal),
       targetButtonKind: "ok",
       confidence: 0.62,
@@ -116,11 +172,29 @@ export function fallbackVisionStep(input: VisionNextStepInput): VisionNextStepRe
       action: "press_button",
       instructionText: `If your remote has a ${goal.targetApp} button, point the camera at it and press it.`,
       spokenText: `Point the camera at your remote. If you see the ${goal.targetApp} button, press it.`,
+      currentState: "The requested app may have a physical remote shortcut.",
+      nextCheckpoint: `${goal.targetApp} opens`,
       targetLabel: goal.targetApp,
       targetButtonKind: goal.targetApp?.toLowerCase() === "youtube" ? "youtube" : "netflix",
       confidence: 0.52,
       needsAnotherFrame: true,
       reason: "The camera fallback cannot reliably locate app shortcuts without the vision model."
+    });
+  }
+
+  if (goal.intent === "search_program" && texts.includes("search")) {
+    return response({
+      sceneType: "tv",
+      action: "move_selection",
+      instructionText: `The TV shows Search. Select it and search for ${goal.searchQuery ?? displayTarget(goal)}.`,
+      spokenText: `Select Search, then search for ${goal.searchQuery ?? displayTarget(goal)}.`,
+      currentState: "A search entry point is visible on the TV.",
+      nextCheckpoint: `${goal.searchQuery ?? displayTarget(goal)} search results`,
+      targetLabel: "Search",
+      targetButtonKind: "ok",
+      confidence: 0.58,
+      needsAnotherFrame: true,
+      reason: "Search is visible, which is the next useful step for a title request."
     });
   }
 
@@ -130,6 +204,8 @@ export function fallbackVisionStep(input: VisionNextStepInput): VisionNextStepRe
       action: "move_selection",
       instructionText: `On the TV screen, look for ${displayTarget(goal)}. Move the highlight there and press OK.`,
       spokenText: `On the TV screen, move the highlight to ${displayTarget(goal)}, then press OK.`,
+      currentState: "The visible TV text looks like a home or app navigation screen.",
+      nextCheckpoint: `${displayTarget(goal)} selected`,
       targetLabel: displayTarget(goal),
       targetButtonKind: "ok",
       confidence: 0.55,
@@ -143,6 +219,8 @@ export function fallbackVisionStep(input: VisionNextStepInput): VisionNextStepRe
     action: "point_camera",
     instructionText: `Point the camera at the TV screen so I can find ${displayTarget(goal)}.`,
     spokenText: `Point the camera at the TV screen so I can find ${displayTarget(goal)}.`,
+    currentState: "The local fallback cannot infer the current TV state.",
+    nextCheckpoint: `${displayTarget(goal)} visible or remote visible`,
     targetLabel: displayTarget(goal),
     targetButtonKind: null,
     confidence: 0.42,
@@ -178,6 +256,8 @@ export function validateVisionResponse(value: unknown): VisionNextStepResponse |
     action: candidate.action,
     instructionText: candidate.instructionText.trim(),
     spokenText: candidate.spokenText.trim(),
+    currentState: nullableString(candidate.currentState),
+    nextCheckpoint: nullableString(candidate.nextCheckpoint),
     targetLabel: nullableString(candidate.targetLabel),
     targetButtonKind: normalizeButtonKind(candidate.targetButtonKind),
     targetRect: normalizeTargetRect(candidate.targetRect),
@@ -188,9 +268,17 @@ export function validateVisionResponse(value: unknown): VisionNextStepResponse |
   };
 }
 
-function response(value: Omit<VisionNextStepResponse, "targetRect" | "source"> & { targetRect?: VisionNextStepResponse["targetRect"] }): VisionNextStepResponse {
+function response(
+  value: Omit<VisionNextStepResponse, "targetRect" | "source" | "currentState" | "nextCheckpoint"> & {
+    targetRect?: VisionNextStepResponse["targetRect"];
+    currentState?: string | null;
+    nextCheckpoint?: string | null;
+  }
+): VisionNextStepResponse {
   return {
     targetRect: null,
+    currentState: null,
+    nextCheckpoint: null,
     source: "fallback",
     ...value
   };
@@ -235,6 +323,38 @@ function displayTarget(input: VisionNextStepInput["goal"]): string {
 function isDirectApp(value: string | null): boolean {
   const text = value?.toLowerCase() ?? "";
   return text === "netflix" || text === "youtube";
+}
+
+function isLiveTVGoal(goal: VisionNextStepInput["goal"]): boolean {
+  const target = `${goal.targetChannel ?? ""} ${goal.searchQuery ?? ""} ${goal.title}`.toLowerCase();
+  return target.includes("live") || target.includes("news") || target.includes("antenna") || target.includes("cable");
+}
+
+function looksLikeInsideStreamingApp(texts: string): boolean {
+  return [
+    "hbo",
+    "max",
+    "netflix",
+    "youtube",
+    "hulu",
+    "disney",
+    "prime video",
+    "peacock",
+    "paramount",
+    "euphoria",
+    "episode",
+    "season",
+    "resume",
+    "play"
+  ].some((needle) => texts.includes(needle));
+}
+
+function looksLikeInsideDifferentApp(texts: string, targetApp: string): boolean {
+  const target = targetApp.toLowerCase();
+  if (!texts || texts.includes(target)) {
+    return false;
+  }
+  return looksLikeInsideStreamingApp(texts);
 }
 
 function errorMessage(error: unknown): string {
