@@ -181,6 +181,8 @@ function buildPrompt(input: AssistantParseInput, memory: MemorySnapshot): string
     "Return only the requested JSON structure.",
     "The iPhone app handles camera scanning, OCR, Gemini Vision, and step-by-step instructions. Your job is to convert the user's natural request into a stable goal object that a vision planner can execute from whatever screen or remote is currently visible.",
     "Generalize. Do not return unknown just because the exact app, show, setting, channel, or workflow was not listed in examples.",
+    "Return exactly one JSON object with these keys: intent, targetApp, targetChannel, searchQuery, inputName, taskDescription, confidence, clarificationQuestion, memoryUpdates.",
+    "Use null for fields that do not apply. memoryUpdates must be an array, even if empty.",
     "",
     "Intent mapping:",
     "- turn_on_tv: powering the TV on or waking it.",
