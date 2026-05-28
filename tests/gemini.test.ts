@@ -45,8 +45,8 @@ describe("gemini generator", () => {
     expect((options?.headers as Record<string, string>)["x-goog-api-key"]).toBe("test-key");
 
     const body = JSON.parse(String(options?.body));
-    expect(body.generationConfig.responseFormat.text.mimeType).toBe("application/json");
-    expect(body.generationConfig.responseFormat.text.schema.properties.intent.enum).toContain("open_app");
+    expect(body.generationConfig.responseMimeType).toBe("application/json");
+    expect(body.generationConfig.responseJsonSchema.properties.intent.enum).toContain("open_app");
   });
 
   it("sends camera frames to Gemini vision as inline JPEG data", async () => {
@@ -100,12 +100,13 @@ describe("gemini generator", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const [, options] = fetchMock.mock.calls[0];
     const body = JSON.parse(String(options?.body));
-    expect(body.contents[0].parts[0].text).toContain("This is not a keyword finder");
-    expect(body.contents[0].parts[0].text).toContain("If the needed button is not visible");
-    expect(body.contents[0].parts[1].inlineData.mimeType).toBe("image/jpeg");
-    expect(body.contents[0].parts[1].inlineData.data).toBe("abc123");
-    expect(body.generationConfig.responseFormat.text.schema.properties.action.enum).toContain("press_button");
-    expect(body.generationConfig.responseFormat.text.schema.properties.currentState.type).toContain("string");
+    expect(body.contents[0].parts[0].inline_data.mime_type).toBe("image/jpeg");
+    expect(body.contents[0].parts[0].inline_data.data).toBe("abc123");
+    expect(body.contents[0].parts[1].text).toContain("This is not a keyword finder");
+    expect(body.contents[0].parts[1].text).toContain("The attached image is the primary evidence");
+    expect(body.contents[0].parts[1].text).toContain("If the needed button is not visible");
+    expect(body.generationConfig.responseJsonSchema.properties.action.enum).toContain("press_button");
+    expect(body.generationConfig.responseJsonSchema.properties.currentState.type).toContain("string");
   });
 
   it("falls back to JSON mode when structured output is rejected", async () => {
@@ -146,6 +147,6 @@ describe("gemini generator", () => {
     expect(result?.intent).toBe("search_program");
     const secondBody = JSON.parse(String(fetchMock.mock.calls[1][1]?.body));
     expect(secondBody.generationConfig.responseMimeType).toBe("application/json");
-    expect(secondBody.generationConfig.responseFormat).toBeUndefined();
+    expect(secondBody.generationConfig.responseJsonSchema).toBeUndefined();
   });
 });

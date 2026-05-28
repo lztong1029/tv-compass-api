@@ -138,8 +138,8 @@ export function fallbackVisionStep(input: VisionNextStepInput): VisionNextStepRe
     return response({
       sceneType: "tv",
       action: "move_selection",
-      instructionText: `You appear to be in ${goal.targetApp}. Find Search, then search for ${goal.searchQuery ?? displayTarget(goal)}.`,
-      spokenText: `You appear to be in ${goal.targetApp}. Find Search, then search for ${goal.searchQuery ?? displayTarget(goal)}.`,
+      instructionText: `I can see ${goal.targetApp}, but not ${goal.searchQuery ?? displayTarget(goal)}. Find Search instead of selecting this screen.`,
+      spokenText: `I can see ${goal.targetApp}, but not ${goal.searchQuery ?? displayTarget(goal)}. Find Search instead.`,
       currentState: `The TV appears to be in ${goal.targetApp}.`,
       nextCheckpoint: "search field visible",
       targetLabel: "Search",
@@ -304,8 +304,13 @@ function normalizeTargetRect(value: unknown): VisionNextStepResponse["targetRect
   if (x === null || y === null || width === null || height === null || width <= 0 || height <= 0) {
     return null;
   }
+  const clampedWidth = Math.min(width, 1 - x);
+  const clampedHeight = Math.min(height, 1 - y);
+  if (clampedWidth <= 0 || clampedHeight <= 0) {
+    return null;
+  }
 
-  return { x, y, width, height };
+  return { x, y, width: clampedWidth, height: clampedHeight };
 }
 
 function boundedNumber(value: unknown): number | null {

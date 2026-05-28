@@ -91,15 +91,16 @@ export function createGeminiVisionGenerator(apiKey: string | undefined, model = 
 
   return async (input, memory) => {
     const prompt = buildVisionPrompt(input, memory);
-    const parts: Array<Record<string, unknown>> = [{ text: prompt }];
+    const parts: Array<Record<string, unknown>> = [];
     if (input.imageBase64) {
       parts.push({
-        inlineData: {
-          mimeType: "image/jpeg",
+        inline_data: {
+          mime_type: "image/jpeg",
           data: input.imageBase64
         }
       });
     }
+    parts.push({ text: prompt });
 
     return requestGeminiJSON<VisionNextStepResponse>(apiKey, model, parts, {
       temperature: 0.1,
@@ -118,12 +119,8 @@ async function requestGeminiJSON<T>(
   try {
     return await postGeminiJSON<T>(apiKey, model, parts, {
       temperature: options.temperature,
-      responseFormat: {
-        text: {
-          mimeType: "application/json",
-          schema: options.schema
-        }
-      }
+      responseMimeType: "application/json",
+      responseJsonSchema: options.schema
     }, options.errorPrefix);
   } catch (structuredError) {
     try {
@@ -209,7 +206,8 @@ function buildPrompt(input: AssistantParseInput, memory: MemorySnapshot): string
 function buildVisionPrompt(input: VisionNextStepInput, memory: MemorySnapshot): string {
   return [
     "You are the vision planner for TV Compass, an iPhone app for older adults who do not know where TV remote buttons or TV menu items are.",
-    "The user has already stated a goal. Inspect the current camera frame first, use OCR only as supplemental evidence, infer the current TV/remote state, then return exactly one next action that is possible from this scene.",
+    "The user has already stated a goal. The attached image is the primary evidence. OCR text is only supplemental and may come from ads, reflections, partial text, or the wrong screen.",
+    "Inspect the current camera frame first, infer the current TV/remote state, then return exactly one next action that is possible from this scene.",
     "This is not a keyword finder. Do not simply look for the goal text on the current screen. Decide whether the user is inside the wrong app, on a content detail page, on a TV home screen, inside search, or looking at the remote.",
     "Do not give a generic multi-step recipe. Only describe the immediate next action.",
     "High visual guidance is the product. If the target button or TV item is visible, return a targetRect so the iPhone can draw a yellow highlight.",
@@ -218,13 +216,17 @@ function buildVisionPrompt(input: VisionNextStepInput, memory: MemorySnapshot): 
     "If the remote is visible, identify the relevant button and return a targetRect around the button when it is visible.",
     "If the TV screen is visible, identify the relevant on-screen tile, menu item, input, app, or channel and return targetRect when visible.",
     "If the needed button is not visible because the camera is pointed at the TV, ask the user to show the remote, and set targetButtonKind to the button you need when known.",
+    "If the TV appears off, black, asleep, on the wrong input, or no actual TV UI is visible, do not say you cannot read text. The next action is usually to show the remote and press Power or Input.",
     "If the frame is unclear, tell the user how to move the phone: closer, point at the remote, point at the TV screen, or reduce glare.",
     "Use short plain English. Write spokenText as one calm sentence for voice output.",
     "Return only the requested JSON structure.",
     "",
     "State-aware planning examples:",
-    "- Goal is Live TV or news live streaming, but the TV image shows HBO, Netflix, YouTube, a show page, or video playback: the next action is usually Home or Back, not searching for the word news on that screen. If the remote is visible, highlight Home or Back. If only the TV is visible, ask to show the remote.",
-    "- Goal is a show/movie inside a service, such as Euphoria in HBO. If the TV already shows that service, guide toward Search or the visible title. If the TV is in another app or unrelated screen, guide to Home first, then the service.",
+    "- Goal is Live TV or news live streaming, but the TV image shows HBO, Netflix, YouTube, a show page, an ad, or video playback: the next action is usually Home or Back, not searching for the word news on that screen. If the remote is visible, highlight Home or Back. If only the TV is visible, ask to show the remote.",
+    "- Goal is a show/movie inside a service, such as Euphoria in HBO. If the screen only shows an HBO/Max ad or another HBO title, do not treat that as success and do not select it. Guide toward Search, the exact title, or Home depending on the current state.",
+    "- Goal is a show/movie inside a service. If the TV appears off or not showing an actual TV UI, first guide the user to turn on the TV before opening the app or searching.",
+    "- If the exact requested title is visible, target that title or its Play/Resume button. If only the app/service name is visible, target Search unless the app tile itself is the next needed step.",
+    "- Goal is a show/movie inside a service, such as Euphoria in HBO. If the TV already shows that service, guide toward Search or the visible exact title. If the TV is in another app or unrelated screen, guide to Home first, then the service.",
     "- Goal is opening an app. If the app tile is visible on the TV, target that tile and use OK. If the user is inside another app, guide to Home or Back first.",
     "- Goal is complete only when the requested app/channel/content appears open or ready to play.",
     "",
