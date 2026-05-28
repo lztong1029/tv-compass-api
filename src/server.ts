@@ -15,7 +15,7 @@ export function createApp(repository: MemoryRepository, gemini: GeminiGenerator 
     response.json({
       ok: true,
       service: "tv-compass-api",
-      version: "2026-05-27.2",
+      version: "2026-05-27.3",
       geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
       geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.5-flash"
     });
