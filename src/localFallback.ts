@@ -6,6 +6,7 @@ const baseResponse = (): AssistantParseResponse => ({
   targetChannel: null,
   searchQuery: null,
   inputName: null,
+  taskDescription: null,
   confidence: 0,
   clarificationQuestion: "Tell me what you want to watch, or name the app, channel, input, or program.",
   memoryUpdates: [],
@@ -20,7 +21,7 @@ export function parseWithLocalFallback(utterance: string, memory: MemorySnapshot
     return response;
   }
 
-  if (text.includes("开电视") || text.includes("打开电视") || text.includes("turn on") || text.includes("power on")) {
+  if ((text.includes("开电视") || text.includes("打开电视") || text.includes("turn on") || text.includes("power on")) && !isFeatureToggle(text)) {
     return {
       ...response,
       intent: "turn_on_tv",
@@ -131,6 +132,18 @@ export function parseWithLocalFallback(utterance: string, memory: MemorySnapshot
     };
   }
 
+  const generalTask = generalTVTask(text);
+  if (generalTask) {
+    return {
+      ...response,
+      intent: "general_tv_task",
+      taskDescription: generalTask,
+      confidence: 0.68,
+      clarificationQuestion: null,
+      memoryUpdates: [{ key: "lastSuccessfulTask", value: generalTask }]
+    };
+  }
+
   if (text.includes("搜索") || text.includes("search") || text.includes("找")) {
     const query = text
       .replaceAll("搜索", "")
@@ -161,6 +174,84 @@ export function parseWithLocalFallback(utterance: string, memory: MemorySnapshot
   }
 
   return response;
+}
+
+function generalTVTask(text: string): string | null {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const taskHints = [
+    "volume",
+    "louder",
+    "quieter",
+    "mute",
+    "unmute",
+    "caption",
+    "subtitle",
+    "audio language",
+    "language",
+    "settings",
+    "setting",
+    "wifi",
+    "wi-fi",
+    "network",
+    "bluetooth",
+    "pair",
+    "remote",
+    "brightness",
+    "picture",
+    "display",
+    "audio",
+    "sound",
+    "sleep timer",
+    "timer",
+    "parental",
+    "install",
+    "update",
+    "delete app",
+    "remove app",
+    "sign in",
+    "log in",
+    "account",
+    "no signal",
+    "not working",
+    "fix",
+    "help me",
+    "怎么",
+    "设置",
+    "字幕",
+    "声音",
+    "音量",
+    "静音",
+    "网络",
+    "蓝牙",
+    "遥控器",
+    "登录"
+  ];
+
+  if (taskHints.some((hint) => normalized.includes(hint))) {
+    return titleCase(normalized);
+  }
+
+  return null;
+}
+
+function isFeatureToggle(text: string): boolean {
+  return [
+    "caption",
+    "subtitle",
+    "cc",
+    "mute",
+    "wifi",
+    "wi-fi",
+    "bluetooth",
+    "字幕",
+    "静音",
+    "网络",
+    "蓝牙"
+  ].some((needle) => text.includes(needle));
 }
 
 function knownStreamingApp(text: string): string | null {

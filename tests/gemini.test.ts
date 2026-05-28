@@ -47,6 +47,9 @@ describe("gemini generator", () => {
     const body = JSON.parse(String(options?.body));
     expect(body.generationConfig.responseMimeType).toBe("application/json");
     expect(body.generationConfig.responseJsonSchema.properties.intent.enum).toContain("open_app");
+    expect(body.generationConfig.responseJsonSchema.properties.intent.enum).toContain("general_tv_task");
+    expect(body.contents[0].parts[0].text).toContain("Generalize");
+    expect(body.contents[0].parts[0].text).toContain("volume, mute, captions");
   });
 
   it("sends camera frames to Gemini vision as inline JPEG data", async () => {
@@ -105,6 +108,7 @@ describe("gemini generator", () => {
     expect(body.contents[0].parts[1].text).toContain("This is not a keyword finder");
     expect(body.contents[0].parts[1].text).toContain("The attached image is the primary evidence");
     expect(body.contents[0].parts[1].text).toContain("If the needed button is not visible");
+    expect(body.contents[0].parts[1].text).toContain("For general_tv_task goals");
     expect(body.generationConfig.responseJsonSchema.properties.action.enum).toContain("press_button");
     expect(body.generationConfig.responseJsonSchema.properties.currentState.type).toContain("string");
   });

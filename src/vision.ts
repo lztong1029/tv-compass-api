@@ -102,6 +102,40 @@ export function fallbackVisionStep(input: VisionNextStepInput): VisionNextStepRe
     });
   }
 
+  if (goal.intent === "general_tv_task") {
+    const task = goal.taskDescription ?? goal.title;
+    const targetButton = generalTaskButton(task);
+    if (targetButton) {
+      return response({
+        sceneType: "remote",
+        action: "press_button",
+        instructionText: `Show the remote and press ${buttonLabel(targetButton)}.`,
+        spokenText: `Show me the remote and press ${buttonLabel(targetButton)}.`,
+        currentState: `The goal is: ${task}.`,
+        nextCheckpoint: "TV responds to the remote button",
+        targetLabel: buttonLabel(targetButton),
+        targetButtonKind: targetButton,
+        confidence: 0.52,
+        needsAnotherFrame: true,
+        reason: "Local fallback maps this general task to a common remote button."
+      });
+    }
+
+    return response({
+      sceneType: "unknown",
+      action: "point_camera",
+      instructionText: `Show the TV screen or remote so I can guide: ${task}.`,
+      spokenText: "Show me the TV screen or remote so I can guide the next step.",
+      currentState: "The goal is a general TV task.",
+      nextCheckpoint: "relevant menu or remote button visible",
+      targetLabel: "Settings",
+      targetButtonKind: null,
+      confidence: 0.42,
+      needsAnotherFrame: true,
+      reason: "General TV tasks depend on the visible current screen."
+    });
+  }
+
   if (goal.intent === "open_channel" && isLiveTVGoal(goal) && looksLikeInsideStreamingApp(texts)) {
     return response({
       sceneType: "remote",
@@ -322,7 +356,7 @@ function nullableString(value: unknown): string | null {
 }
 
 function displayTarget(input: VisionNextStepInput["goal"]): string {
-  return input.targetApp ?? input.targetChannel ?? input.searchQuery ?? input.inputName ?? input.title;
+  return input.targetApp ?? input.targetChannel ?? input.searchQuery ?? input.inputName ?? input.taskDescription ?? input.title;
 }
 
 function isDirectApp(value: string | null): boolean {
@@ -360,6 +394,27 @@ function looksLikeInsideDifferentApp(texts: string, targetApp: string): boolean 
     return false;
   }
   return looksLikeInsideStreamingApp(texts);
+}
+
+function generalTaskButton(task: string): string | null {
+  const text = task.toLowerCase();
+  if (text.includes("volume") || text.includes("louder")) return "volumeUp";
+  if (text.includes("quieter")) return "volumeDown";
+  if (text.includes("mute")) return "mute";
+  if (text.includes("input") || text.includes("source") || text.includes("signal")) return "input";
+  if (text.includes("setting") || text.includes("caption") || text.includes("subtitle") || text.includes("wifi") || text.includes("network")) return "settings";
+  return null;
+}
+
+function buttonLabel(kind: string): string {
+  const labels: Record<string, string> = {
+    volumeUp: "Volume +",
+    volumeDown: "Volume -",
+    mute: "Mute",
+    input: "Input",
+    settings: "Settings"
+  };
+  return labels[kind] ?? kind;
 }
 
 function errorMessage(error: unknown): string {

@@ -15,7 +15,7 @@ export function createApp(repository: MemoryRepository, gemini: GeminiGenerator 
     response.json({
       ok: true,
       service: "tv-compass-api",
-      version: "2026-05-27.1",
+      version: "2026-05-27.2",
       geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
       geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.5-flash"
     });
@@ -159,7 +159,8 @@ function normalizeGoalDescriptor(value: unknown): GoalDescriptor | null {
     targetApp: nullableString(body.targetApp),
     targetChannel: nullableString(body.targetChannel),
     searchQuery: nullableString(body.searchQuery),
-    inputName: nullableString(body.inputName)
+    inputName: nullableString(body.inputName),
+    taskDescription: nullableString(body.taskDescription)
   };
 }
 

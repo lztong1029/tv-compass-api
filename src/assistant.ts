@@ -9,6 +9,7 @@ const intents = new Set<AssistantIntent>([
   "open_channel",
   "search_program",
   "change_input",
+  "general_tv_task",
   "unknown"
 ]);
 
@@ -47,6 +48,10 @@ export function updatedMemoryAfterParse(memory: MemorySnapshot, response: Assist
     derivedUpdates.push({ key: "lastTargetChannel", value: response.targetChannel });
   }
 
+  if (response.intent === "general_tv_task" && response.taskDescription) {
+    derivedUpdates.push({ key: "lastSuccessfulTask", value: response.taskDescription });
+  }
+
   return applyMemoryUpdates(memory, derivedUpdates);
 }
 
@@ -71,6 +76,7 @@ export function validateAssistantResponse(value: unknown): AssistantParseRespons
     targetChannel: nullableString(candidate.targetChannel),
     searchQuery: nullableString(candidate.searchQuery),
     inputName: nullableString(candidate.inputName),
+    taskDescription: nullableString(candidate.taskDescription),
     confidence,
     clarificationQuestion: nullableString(candidate.clarificationQuestion),
     memoryUpdates: normalizeMemoryUpdates(candidate.memoryUpdates),

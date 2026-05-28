@@ -4,6 +4,7 @@ export type AssistantIntent =
   | "open_channel"
   | "search_program"
   | "change_input"
+  | "general_tv_task"
   | "unknown";
 
 export type MemorySnapshot = {
@@ -34,6 +35,7 @@ export type AssistantParseResponse = {
   targetChannel: string | null;
   searchQuery: string | null;
   inputName: string | null;
+  taskDescription?: string | null;
   confidence: number;
   clarificationQuestion: string | null;
   memoryUpdates: MemoryUpdate[];
@@ -47,6 +49,7 @@ export type GoalDescriptor = {
   targetChannel: string | null;
   searchQuery: string | null;
   inputName: string | null;
+  taskDescription?: string | null;
 };
 
 export type VisionSceneType = "remote" | "tv" | "unknown";
