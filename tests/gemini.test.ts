@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createGeminiGenerator, createGeminiVisionGenerator } from "../src/gemini.js";
+import { createGeminiGenerator, createGeminiVisionGenerator, normalizeGeminiModel } from "../src/gemini.js";
 import { defaultMemory } from "../src/types.js";
 
 describe("gemini generator", () => {
@@ -50,6 +50,51 @@ describe("gemini generator", () => {
     expect(body.generationConfig.responseJsonSchema.properties.intent.enum).toContain("general_tv_task");
     expect(body.contents[0].parts[0].text).toContain("Generalize");
     expect(body.contents[0].parts[0].text).toContain("volume, mute, captions");
+  });
+
+  it("normalizes unsupported or shorthand Gemini model ids", async () => {
+    expect(normalizeGeminiModel(undefined)).toBe("gemini-2.5-flash");
+    expect(normalizeGeminiModel("")).toBe("gemini-2.5-flash");
+    expect(normalizeGeminiModel("gemini-3.5-flash")).toBe("gemini-2.5-flash");
+    expect(normalizeGeminiModel("gemini-3-flash")).toBe("gemini-3-flash-preview");
+    expect(normalizeGeminiModel("gemini-2.5-pro")).toBe("gemini-2.5-pro");
+  });
+
+  it("uses the normalized model id for requests", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      intent: "general_tv_task",
+                      targetApp: null,
+                      targetChannel: null,
+                      searchQuery: null,
+                      inputName: null,
+                      taskDescription: "Turn on captions",
+                      confidence: 0.88,
+                      clarificationQuestion: null,
+                      memoryUpdates: []
+                    })
+                  }
+                ]
+              }
+            }
+          ]
+        }),
+        { status: 200 }
+      )
+    );
+
+    const generator = createGeminiGenerator("test-key", "gemini-3.5-flash");
+    await generator?.({ userId: "demo", utterance: "turn on captions" }, defaultMemory());
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(String(fetchMock.mock.calls[0][0])).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent");
   });
 
   it("sends camera frames to Gemini vision as inline JPEG data", async () => {

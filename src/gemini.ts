@@ -73,11 +73,12 @@ export function createGeminiGenerator(apiKey: string | undefined, model = "gemin
   if (!apiKey) {
     return null;
   }
+  const resolvedModel = normalizeGeminiModel(model);
 
   return async (input, memory) => {
     const prompt = buildPrompt(input, memory);
     const parts = [{ text: prompt }];
-    return requestGeminiJSON<AssistantParseResponse>(apiKey, model, parts, {
+    return requestGeminiJSON<AssistantParseResponse>(apiKey, resolvedModel, parts, {
       temperature: 0.2,
       schema: structuredResponseSchema,
       errorPrefix: "Gemini request failed"
@@ -89,6 +90,7 @@ export function createGeminiVisionGenerator(apiKey: string | undefined, model = 
   if (!apiKey) {
     return null;
   }
+  const resolvedModel = normalizeGeminiModel(model);
 
   return async (input, memory) => {
     const prompt = buildVisionPrompt(input, memory);
@@ -103,12 +105,26 @@ export function createGeminiVisionGenerator(apiKey: string | undefined, model = 
     }
     parts.push({ text: prompt });
 
-    return requestGeminiJSON<VisionNextStepResponse>(apiKey, model, parts, {
+    return requestGeminiJSON<VisionNextStepResponse>(apiKey, resolvedModel, parts, {
       temperature: 0.1,
       schema: visionResponseSchema,
       errorPrefix: "Gemini vision request failed"
     });
   };
+}
+
+export function normalizeGeminiModel(model: string | undefined): string {
+  const normalized = model?.trim();
+  if (!normalized) {
+    return "gemini-2.5-flash";
+  }
+
+  const aliases: Record<string, string> = {
+    "gemini-3.5-flash": "gemini-2.5-flash",
+    "gemini-3-flash": "gemini-3-flash-preview"
+  };
+
+  return aliases[normalized] ?? normalized;
 }
 
 async function requestGeminiJSON<T>(

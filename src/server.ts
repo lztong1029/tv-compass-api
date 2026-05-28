@@ -1,6 +1,6 @@
 import cors from "cors";
 import express from "express";
-import type { GeminiGenerator, GeminiVisionGenerator } from "./gemini.js";
+import { normalizeGeminiModel, type GeminiGenerator, type GeminiVisionGenerator } from "./gemini.js";
 import { parseAssistantRequest, updatedMemoryAfterParse } from "./assistant.js";
 import { normalizeMemory, type MemoryRepository } from "./memoryRepository.js";
 import { nextVisionStep } from "./vision.js";
@@ -15,9 +15,10 @@ export function createApp(repository: MemoryRepository, gemini: GeminiGenerator 
     response.json({
       ok: true,
       service: "tv-compass-api",
-      version: "2026-05-27.5",
+      version: "2026-05-27.6",
       geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
-      geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.5-flash"
+      geminiConfiguredModel: process.env.GEMINI_MODEL ?? null,
+      geminiModel: normalizeGeminiModel(process.env.GEMINI_MODEL)
     });
   });
 
