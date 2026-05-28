@@ -80,7 +80,6 @@ describe("assistant parser", () => {
   it("rejects malformed gemini output", () => {
     const result = validateAssistantResponse({
       intent: "open_app",
-      targetApp: "Netflix",
       confidence: "high",
       memoryUpdates: []
     });
@@ -110,5 +109,17 @@ describe("assistant parser", () => {
 
     expect(result?.intent).toBe("general_tv_task");
     expect(result?.taskDescription).toContain("captions");
+  });
+
+  it("accepts looser Gemini JSON with snake_case fields", () => {
+    const result = validateAssistantResponse({
+      intent: "general_task",
+      task_description: "connect the TV to Wi-Fi",
+      memory_updates: []
+    });
+
+    expect(result?.intent).toBe("general_tv_task");
+    expect(result?.taskDescription).toBe("connect the TV to Wi-Fi");
+    expect(result?.confidence).toBeGreaterThan(0.5);
   });
 });

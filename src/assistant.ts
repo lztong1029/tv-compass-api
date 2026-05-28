@@ -60,28 +60,95 @@ export function validateAssistantResponse(value: unknown): AssistantParseRespons
     return null;
   }
 
-  const candidate = value as Partial<AssistantParseResponse>;
-  if (!candidate.intent || !intents.has(candidate.intent)) {
+  const candidate = value as Partial<AssistantParseResponse> & Record<string, unknown>;
+  const intent = normalizeIntent(candidate.intent);
+  if (!intent || !intents.has(intent)) {
     return null;
   }
 
-  const confidence = typeof candidate.confidence === "number" ? Math.max(0, Math.min(1, candidate.confidence)) : null;
+  const targetApp = nullableString(candidate.targetApp ?? candidate.target_app);
+  const targetChannel = nullableString(candidate.targetChannel ?? candidate.target_channel);
+  const searchQuery = nullableString(candidate.searchQuery ?? candidate.search_query);
+  const inputName = nullableString(candidate.inputName ?? candidate.input_name);
+  const taskDescription = nullableString(candidate.taskDescription ?? candidate.task_description ?? candidate.description);
+  const confidence = normalizeConfidence(candidate.confidence, intent, {
+    targetApp,
+    targetChannel,
+    searchQuery,
+    inputName,
+    taskDescription
+  });
   if (confidence === null) {
     return null;
   }
 
   return {
-    intent: candidate.intent,
-    targetApp: nullableString(candidate.targetApp),
-    targetChannel: nullableString(candidate.targetChannel),
-    searchQuery: nullableString(candidate.searchQuery),
-    inputName: nullableString(candidate.inputName),
-    taskDescription: nullableString(candidate.taskDescription),
+    intent,
+    targetApp,
+    targetChannel,
+    searchQuery,
+    inputName,
+    taskDescription,
     confidence,
-    clarificationQuestion: nullableString(candidate.clarificationQuestion),
-    memoryUpdates: normalizeMemoryUpdates(candidate.memoryUpdates),
+    clarificationQuestion: nullableString(candidate.clarificationQuestion ?? candidate.clarification_question),
+    memoryUpdates: normalizeMemoryUpdates(candidate.memoryUpdates ?? candidate.memory_updates),
     source: "gemini"
   };
+}
+
+function normalizeIntent(value: unknown): AssistantIntent | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim().toLowerCase().replaceAll("-", "_").replaceAll(" ", "_");
+  const aliases: Record<string, AssistantIntent> = {
+    turnontv: "turn_on_tv",
+    turn_on: "turn_on_tv",
+    power_on: "turn_on_tv",
+    openapp: "open_app",
+    open_service: "open_app",
+    openchannel: "open_channel",
+    live_tv: "open_channel",
+    searchprogram: "search_program",
+    search_content: "search_program",
+    watch_content: "search_program",
+    changeinput: "change_input",
+    switch_input: "change_input",
+    general_task: "general_tv_task",
+    general: "general_tv_task",
+    tv_task: "general_tv_task",
+    settings_task: "general_tv_task"
+  };
+
+  return (intents.has(normalized as AssistantIntent) ? normalized : aliases[normalized]) as AssistantIntent | null;
+}
+
+function normalizeConfidence(
+  value: unknown,
+  intent: AssistantIntent,
+  fields: { targetApp: string | null; targetChannel: string | null; searchQuery: string | null; inputName: string | null; taskDescription: string | null }
+): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(0, Math.min(1, value));
+  }
+
+  switch (intent) {
+    case "turn_on_tv":
+      return 0.72;
+    case "open_app":
+      return fields.targetApp ? 0.72 : null;
+    case "open_channel":
+      return fields.targetChannel ? 0.72 : null;
+    case "search_program":
+      return fields.searchQuery ? 0.72 : null;
+    case "change_input":
+      return fields.inputName ? 0.72 : null;
+    case "general_tv_task":
+      return fields.taskDescription ? 0.68 : null;
+    case "unknown":
+      return 0.3;
+  }
 }
 
 function nullableString(value: unknown): string | null {
