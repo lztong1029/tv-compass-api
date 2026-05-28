@@ -146,9 +146,9 @@ export function parseWithLocalFallback(utterance: string, memory: MemorySnapshot
 
   if (text.includes("搜索") || text.includes("search") || text.includes("找")) {
     const query = text
-      .replaceAll("搜索", "")
-      .replaceAll("search", "")
-      .replaceAll("找", "")
+      .replace(/搜索/g, "")
+      .replace(/search/g, "")
+      .replace(/找/g, "")
       .trim();
 
     if (query) {

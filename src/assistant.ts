@@ -101,7 +101,7 @@ function normalizeIntent(value: unknown): AssistantIntent | null {
     return null;
   }
 
-  const normalized = value.trim().toLowerCase().replaceAll("-", "_").replaceAll(" ", "_");
+  const normalized = value.trim().toLowerCase().replace(/[-\s]+/g, "_");
   const aliases: Record<string, AssistantIntent> = {
     turnontv: "turn_on_tv",
     turn_on: "turn_on_tv",
